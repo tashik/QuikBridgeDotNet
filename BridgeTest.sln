@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.1684
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BridgeTest", "BridgeTest\BridgeTest.csproj", "{BBED7088-FBB0-4117-B479-A427EF997A7F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuikBridge", "QuikBridge\QuikBridge.csproj", "{3170214F-38D4-4194-9883-439A5A9CA49A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BBED7088-FBB0-4117-B479-A427EF997A7F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBED7088-FBB0-4117-B479-A427EF997A7F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBED7088-FBB0-4117-B479-A427EF997A7F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBED7088-FBB0-4117-B479-A427EF997A7F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3170214F-38D4-4194-9883-439A5A9CA49A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3170214F-38D4-4194-9883-439A5A9CA49A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3170214F-38D4-4194-9883-439A5A9CA49A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3170214F-38D4-4194-9883-439A5A9CA49A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CFC282E0-4A0C-442F-936E-3E4FB7A1AC40}
+	EndGlobalSection
+EndGlobal
