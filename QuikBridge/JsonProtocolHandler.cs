@@ -15,7 +15,14 @@ namespace QuikBridge
     {
         public int id { get; set; }
         public string type { get; set; }
-        public string data { get; set; }
+        public JsonReqData data { get; set; }
+    }
+
+    public class JsonReqData
+    {
+        public string method { get; set; }
+        public string function { get; set; }
+        public string[] arguments { get; set; }
     }
 
     public class JsonVersionMessage
@@ -292,20 +299,15 @@ namespace QuikBridge
             Console.WriteLine(System.Text.Encoding.UTF8.GetString(trash));
         }
 
-        public void sendReq(int id, string data)
+        public void sendReq(JsonReqMessage req)
         {
             if (weEnded) return;
-
-            JsonReqMessage req = new JsonReqMessage();
-            req.id = id;
-            req.type = "req";
-            req.data = data;
 
             string reqJson = JsonConvert.SerializeObject(req);
             sock.Send(Encoding.UTF8.GetBytes(reqJson));
         }
 
-        public void sendResp(int id, string data)
+        public void sendResp(int id, JsonReqData data)
         {
             if (weEnded) return;
 

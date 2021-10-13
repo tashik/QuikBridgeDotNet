@@ -75,5 +75,11 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\QuikBridge\QuikBridge.csproj">
+      <Project>{3170214f-38d4-4194-9883-439a5a9ca49a}</Project>
+      <Name>QuikBridge</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

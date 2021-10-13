@@ -73,7 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="JsonProtocolHandler.cs" />
-    <Compile Include="QuikBridge.cs" />
+    <Compile Include="QBridge.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
