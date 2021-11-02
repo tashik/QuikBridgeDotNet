@@ -24,8 +24,9 @@ C:\Users\user\source\repos\BridgeTest\BridgeTest\bin\Debug\System.Threading.Task
 C:\Users\user\source\repos\BridgeTest\BridgeTest\bin\Debug\System.ValueTuple.xml
 C:\Users\user\source\repos\BridgeTest\BridgeTest\bin\Debug\System.Text.Json.xml
 C:\Users\user\source\repos\BridgeTest\BridgeTest\bin\Debug\Newtonsoft.Json.xml
-C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.csprojAssemblyReference.cache
 C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.csproj.CoreCompileInputs.cache
 C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.csproj.CopyComplete
 C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.exe
 C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.pdb
+C:\Users\user\source\repos\BridgeTest\BridgeTest\obj\Debug\BridgeTest.csproj.AssemblyReference.cache
+C:\Users\user\source\repos\BridgeTest\BridgeTest\bin\Debug\alglibnet2.dll

@@ -21,8 +21,9 @@ C:\Users\user\source\repos\BridgeTest\QuikBridge\bin\Debug\System.Text.Encodings
 C:\Users\user\source\repos\BridgeTest\QuikBridge\bin\Debug\System.Text.Json.xml
 C:\Users\user\source\repos\BridgeTest\QuikBridge\bin\Debug\System.Threading.Tasks.Extensions.xml
 C:\Users\user\source\repos\BridgeTest\QuikBridge\bin\Debug\System.ValueTuple.xml
-C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.csprojAssemblyReference.cache
 C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.csproj.CoreCompileInputs.cache
 C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.csproj.CopyComplete
 C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.dll
 C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.pdb
+C:\Users\user\source\repos\BridgeTest\QuikBridge\bin\Debug\alglibnet2.dll
+C:\Users\user\source\repos\BridgeTest\QuikBridge\obj\Debug\QuikBridge.csproj.AssemblyReference.cache

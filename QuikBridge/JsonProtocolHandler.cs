@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using Newtonsoft.Json;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace QuikBridge
 {
@@ -47,39 +44,44 @@ namespace QuikBridge
 
     public class JsonProtocolHandler
     {
-        protected Socket sock = null;
-        private int bufSz = 256;
-        private int filledSz = 0;
-        private byte[] incommingBuf = new byte[256];
-        private bool peerEnded = false;
-        private bool weEnded = false;
-        private int expectedResponseId = -1;
-        private ManualResetEvent responseReceived = new ManualResetEvent(false);
+        private Socket Sock;
+        private int _bufSz = 256;
+        private int _filledSz;
+        private byte[] _incommingBuf = new byte[256];
+        private bool _peerEnded;
+        private bool _weEnded;
+        private int _expectedResponseId = -1;
+        private ManualResetEvent _responseReceived = new ManualResetEvent(false);
 
-        public event Action<JsonMessage> reqArrived;
-        public event Action<JsonMessage> respArrived;
-        public event Action connectionClose;
+        public event Action<JsonMessage> ReqArrived;
+        public event Action<JsonMessage> RespArrived;
+        public event Action ConnectionClose;
 
 
-        private int attempts;
+        private int _attempts;
+
+        public const string MsgTypeReq = "req";
+        public const string MsgTypeResp = "ans";
+        public const string MsgTypeEnd = "end";
+        public const string MsgTypeVersion = "ver";
 
         public JsonProtocolHandler(Socket socket)
         {
-            sock = socket;
-            attempts = 0;
+            Sock = socket;
+            _attempts = 0;
         }
 
         public bool Connected
         {
             get
             {
-                if (sock != null)
-                    return sock.Connected;
+                if (Sock != null)
+                    return Sock.Connected;
                 return false;
             }
         }
 
-        public void connect(string host, int port)
+        public void Connect(string host, int port)
         {
             IPHostEntry ipHostInfo = Dns.GetHostEntry(host);
             IPAddress ipAddress = null;
@@ -90,14 +92,14 @@ namespace QuikBridge
             }
             else
             {
-                Console.WriteLine(String.Format("{0} resolved to {1} addresses", host, ipHostInfo.AddressList.Length));
+                Console.WriteLine($"{host} resolved to {ipHostInfo.AddressList.Length} addresses");
                 int i;
                 bool resolved = false;
                 for (i = 0; i < ipHostInfo.AddressList.Length; i++)
                 {
                     if (ipHostInfo.AddressList[i].AddressFamily == AddressFamily.InterNetwork)
                     {
-                        Console.WriteLine(String.Format("Address #{0} has correct family", i));
+                        Console.WriteLine("Address #{0} has correct family", i);
                         ipAddress = ipHostInfo.AddressList[i];
                         resolved = true;
                         break;
@@ -109,17 +111,28 @@ namespace QuikBridge
                     ipAddress = IPAddress.Parse(host.Trim());
                 }
             }
-            Console.WriteLine(String.Format("Create socket {0}:{1}", ipAddress.ToString(), port));
-            sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            Console.WriteLine(String.Format("Connect socket {0}:{1}", ipAddress.ToString(), port));
-            sock.Connect(ipAddress, port);
-            if (sock.Connected)
+            Console.WriteLine("Create socket {0}:{1}", ipAddress, port);
+            Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Console.WriteLine("Connect socket {0}:{1}", ipAddress, port);
+            try
             {
+                Sock.Connect(ipAddress, port);
+                if (!Sock.Connected) return;
                 Console.WriteLine("Socket connected");
-                StateObject state = new StateObject();
-                state.workSocket = sock;
-                state.pHandler = this;
-                sock.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+                var state = new StateObject
+                {
+                    WorkSocket = Sock,
+                    ProtocolHandler = this
+                };
+                Sock.BeginReceive(state.Buffer, 0, StateObject.BufferSize, 0, ReceiveCallback, state);
+            }
+            catch (SocketException e)
+            {
+                if (!Sock.Connected)
+                {
+                    _weEnded = true;
+                }
+                Console.WriteLine(e.Message);
             }
         }
 
@@ -132,24 +145,25 @@ namespace QuikBridge
             try
             {
                 StateObject state = (StateObject)ar.AsyncState;
-                Socket sock = state.workSocket;
-                JsonProtocolHandler ph = state.pHandler;
+                Socket sock = state.WorkSocket;
+                JsonProtocolHandler ph = state.ProtocolHandler;
 
                 int bytesRead = sock.EndReceive(ar);
 
                 if (bytesRead > 0)
                 {
-                    if (ph.bufSz - ph.filledSz < bytesRead)
+                    if (ph._bufSz - ph._filledSz < bytesRead)
                     {
-                        byte[] narr = new byte[ph.filledSz + bytesRead];
-                        ph.incommingBuf.CopyTo(narr, 0);
-                        ph.incommingBuf = narr;
-                        ph.bufSz = ph.filledSz + bytesRead;
+                        var narr = new byte[ph._filledSz + bytesRead];
+                        ph._incommingBuf.CopyTo(narr, 0);
+                        ph._incommingBuf = narr;
+                        ph._bufSz = ph._filledSz + bytesRead;
                     }
-                    Buffer.BlockCopy(state.buffer, 0, ph.incommingBuf, ph.filledSz, bytesRead);
-                    ph.filledSz += bytesRead;
-                    ph.processBuffer();
-                    sock.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+                    Buffer.BlockCopy(state.Buffer, 0, ph._incommingBuf, ph._filledSz, bytesRead);
+                    ph._filledSz += bytesRead;
+                    state.Buffer = ph._incommingBuf;
+                    ph.ProcessBuffer();
+                    sock.BeginReceive(state.Buffer, 0, StateObject.BufferSize, 0, ReceiveCallback, state);
                 }
             }
             catch (Exception e)
@@ -159,22 +173,22 @@ namespace QuikBridge
         }
 
         /// <summary>
-        /// Обработка буфера с ответом
+        /// Parse JSON data
         /// </summary>
-        private void processBuffer()
+        private void ProcessBuffer()
         {
             int i;
-            for (i = 0; i < filledSz; i++)
+            for (i = 0; i < _filledSz; i++)
             {
-                if (incommingBuf[i] == '{')
+                if (_incommingBuf[i] == '{')
                 {
                     if (i > 0)
                     {
                         byte[] trash = new byte[i];
-                        Buffer.BlockCopy(incommingBuf, 0, trash, 0, i);
-                        if (filledSz - i > 0)
-                            Buffer.BlockCopy(incommingBuf, i, incommingBuf, 0, filledSz - i);
-                        filledSz -= i;
+                        Buffer.BlockCopy(_incommingBuf, 0, trash, 0, i);
+                        if (_filledSz - i > 0)
+                            Buffer.BlockCopy(_incommingBuf, i, _incommingBuf, 0, _filledSz - i);
+                        _filledSz -= i;
                         Console.WriteLine("Malformed request");
                         ParseError(trash);
                         i = 0;
@@ -185,38 +199,36 @@ namespace QuikBridge
             if (i > 0)
                 return;
 
-            bool in_string = false;
-            bool in_esc = false;
-            int brace_nesting_level = 0;
+            bool inString = false;
+            bool inEsc = false;
+            int braceNestingLevel = 0;
 
-            for (i = 0; i < filledSz; i++)
+            for (i = 0; i < _filledSz; i++)
             {
-                byte curr_ch = incommingBuf[i];
+                byte currCh = _incommingBuf[i];
 
-                if (curr_ch == '"' && !in_esc)
+                if (currCh == '"' && !inEsc)
                 {
-                    in_string = !in_string;
+                    inString = !inString;
                     continue;
                 }
 
-                if (!in_string)
+                if (!inString)
                 {
-                    if (curr_ch == '{')
-                        brace_nesting_level++;
-                    else if (curr_ch == '}')
+                    if (currCh == '{')
+                        braceNestingLevel++;
+                    else if (currCh == '}')
                     {
-                        brace_nesting_level--;
-                        if (brace_nesting_level == 0)
+                        braceNestingLevel--;
+                        if (braceNestingLevel == 0)
                         {
                             byte[] pdoc = new byte[i + 1];
-                            Buffer.BlockCopy(incommingBuf, 0, pdoc, 0, i + 1);
-                            if (filledSz - i - 1 > 0)
-                                Buffer.BlockCopy(incommingBuf, i, incommingBuf, 0, filledSz - i - 1);
-                            filledSz -= i + 1;
+                            Buffer.BlockCopy(_incommingBuf, 0, pdoc, 0, i + 1);
+                            if (_filledSz - i - 1 > 0)
+                                Buffer.BlockCopy(_incommingBuf, i, _incommingBuf, 0, _filledSz - i - 1);
+                            _filledSz -= i + 1;
                             i = -1;
-                            in_string = false;
-                            in_esc = false;
-                            brace_nesting_level = 0;
+                            braceNestingLevel = 0;
                             JsonDocument jdoc = null;
                             try
                             {
@@ -234,27 +246,27 @@ namespace QuikBridge
                             else
                             {
                                 JsonElement jobj = jdoc.RootElement;
-                                JsonElement idVal, typeVal;
-                                if (jobj.TryGetProperty("id", out idVal) && jobj.TryGetProperty("type", out typeVal))
+                                if (!jobj.TryGetProperty("id", out var idVal) || !jobj.TryGetProperty("type", out var typeVal))
+                                    continue;
+                                if (!idVal.TryGetInt32(out var id))
+                                    id = -1;
+                                if (id >= 0)
                                 {
-                                    int id = -1;
-                                    if (!idVal.TryGetInt32(out id))
-                                        id = -1;
-                                    if (id >= 0)
+                                    var mtype = typeVal.ToString();
+                                    switch (mtype)
                                     {
-                                        string mtype = typeVal.ToString();
-                                        if (mtype == "end")
+                                        case MsgTypeEnd:
                                         {
-                                            peerEnded = true;
-                                            if (weEnded)
+                                            _peerEnded = true;
+                                            if (_weEnded)
                                             {
-                                                finish();
+                                                Finish();
                                             }
                                             else
                                                 EndArrived();
                                             return;
                                         }
-                                        if (mtype == "ver")
+                                        case MsgTypeVersion:
                                         {
                                             int ver = 0;
                                             JsonElement verVal;
@@ -266,95 +278,101 @@ namespace QuikBridge
                                             VerArrived(ver);
                                             return;
                                         }
-                                        if (mtype == "ans" || mtype == "req")
+                                        case MsgTypeReq:
+                                        case MsgTypeResp:
                                         {
                                             JsonElement data;
                                             jobj.TryGetProperty("data", out data);
-                                            if (mtype == "rpy")
-                                                reqMsgArrived(id, "resp", data);
-                                            else
-                                                reqMsgArrived(id, "req", data);
+                                            NewMsgArrived(id, mtype, data);
                                             return;
                                         }
+                                        default:
+                                            Console.WriteLine("Unknown message type {0}", mtype);
+                                            return;
                                     }
                                 }
                             }
-                            continue;
                         }
                     }
                 }
                 else
                 {
-                    if (curr_ch == '\\' && !in_esc)
-                        in_esc = true;
+                    if (currCh == '\\' && !inEsc)
+                        inEsc = true;
                     else
-                        in_esc = false;
+                        inEsc = false;
                 }
             }
         }
 
-        public void ParseError(byte[] trash)
+        private static void ParseError(byte[] trash)
         {
             Console.WriteLine("Can't parse:");
-            Console.WriteLine(System.Text.Encoding.UTF8.GetString(trash));
+            Console.WriteLine(Encoding.UTF8.GetString(trash));
         }
 
-        public void sendReq(JsonReqMessage req)
+        public void SendReq(JsonReqMessage req)
         {
-            if (weEnded) return;
+            if (_weEnded) return;
 
             string reqJson = JsonConvert.SerializeObject(req);
-            sock.Send(Encoding.UTF8.GetBytes(reqJson));
+            Sock.Send(Encoding.UTF8.GetBytes(reqJson));
         }
 
-        public void sendResp(int id, JsonReqData data)
+        public void SendResp(int id, JsonReqData data)
         {
-            if (weEnded) return;
+            if (_weEnded) return;
 
-            JsonReqMessage resp = new JsonReqMessage();
-            resp.id = id;
-            resp.type = "ans";
-            resp.data = data;
+            var resp = new JsonReqMessage
+            {
+                id = id,
+                type = "ans",
+                data = data
+            };
 
-            string respJson = JsonConvert.SerializeObject(resp);
-            sock.Send(Encoding.UTF8.GetBytes(respJson));
+            var respJson = JsonConvert.SerializeObject(resp);
+            Sock.Send(Encoding.UTF8.GetBytes(respJson));
         }
 
-        public void sendVer(string ver)
+        public void SendVer(string ver)
         {
-            if (weEnded) return;
+            if (_weEnded) return;
 
-            JsonVersionMessage req = new JsonVersionMessage();
-            req.id = 0;
-            req.type = "ver";
-            req.version = ver;
+            var req = new JsonVersionMessage
+            {
+                id = 0,
+                type = "ver",
+                version = ver
+            };
 
-            string reqJson = JsonConvert.SerializeObject(req);
-            sock.Send(Encoding.UTF8.GetBytes(reqJson));
+            var reqJson = JsonConvert.SerializeObject(req);
+            Sock.Send(Encoding.UTF8.GetBytes(reqJson));
         }
 
-        public void finish(bool force = false)
+        public void Finish(bool force = false)
         {
-            if (weEnded && ! force)
+            if (_weEnded && ! force)
             {
                 return;
             }
-            JsonFinishMessage req = new JsonFinishMessage();
-            req.id = 0;
-            req.type = "end";
+            JsonFinishMessage req = new JsonFinishMessage
+            {
+                id = 0,
+                type = "end"
+            };
 
             string reqJson = JsonConvert.SerializeObject(req);
-            sock.Send(Encoding.UTF8.GetBytes(reqJson));
+            Sock.Send(Encoding.UTF8.GetBytes(reqJson));
 
-            weEnded = true;
+            _weEnded = true;
 
-            if (peerEnded || force) {
-                sock.Shutdown(SocketShutdown.Both);
-                sock.Close();
+            if (_peerEnded || force) {
+                Sock.Shutdown(SocketShutdown.Both);
+                Sock.Close();
             }
         }
 
-        public void reqMsgArrived(int id, string type, JsonElement data)
+        private void NewMsgArrived(int id, string type, JsonElement data)
         {
             JsonMessage jReq = new JsonMessage()
             {
@@ -362,28 +380,28 @@ namespace QuikBridge
                 type = type,
                 body = data
             };
-            if (type == "req" && reqArrived != null) reqArrived(jReq);
-            else if (type == "ans" && respArrived != null) respArrived(jReq);
+            if (type == MsgTypeReq && ReqArrived != null) ReqArrived(jReq);
+            else if (type == MsgTypeResp && RespArrived != null) RespArrived(jReq);
         }
 
-        public void EndArrived()
+        private void EndArrived()
         {
             Console.WriteLine("end request received");
-            if (connectionClose != null) connectionClose();
+            ConnectionClose?.Invoke();
         }
 
-        public void VerArrived(int ver)
+        private void VerArrived(int ver)
         {
-            Console.WriteLine(String.Format("Version of protocol: {0}", ver));
+            Console.WriteLine($"Version of protocol: {ver}");
         }
     }
 
     public class StateObject
     {
         // Client socket.
-        public Socket workSocket = null;
+        public Socket WorkSocket;
         public const int BufferSize = 256;
-        public JsonProtocolHandler pHandler = null;
-        public byte[] buffer = new byte[BufferSize];
+        public JsonProtocolHandler ProtocolHandler;
+        public byte[] Buffer = new byte[BufferSize];
     }
 }
