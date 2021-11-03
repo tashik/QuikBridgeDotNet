@@ -161,7 +161,6 @@ namespace QuikBridge
                     }
                     Buffer.BlockCopy(state.Buffer, 0, ph._incommingBuf, ph._filledSz, bytesRead);
                     ph._filledSz += bytesRead;
-                    state.Buffer = ph._incommingBuf;
                     ph.ProcessBuffer();
                     sock.BeginReceive(state.Buffer, 0, StateObject.BufferSize, 0, ReceiveCallback, state);
                 }
@@ -178,6 +177,8 @@ namespace QuikBridge
         private void ProcessBuffer()
         {
             int i;
+            Console.WriteLine("INCOMMING BUFFER: ");
+            Console.WriteLine(Encoding.UTF8.GetString(_incommingBuf));
             for (i = 0; i < _filledSz; i++)
             {
                 if (_incommingBuf[i] == '{')
@@ -189,7 +190,7 @@ namespace QuikBridge
                         if (_filledSz - i > 0)
                             Buffer.BlockCopy(_incommingBuf, i, _incommingBuf, 0, _filledSz - i);
                         _filledSz -= i;
-                        Console.WriteLine("Malformed request");
+                        Console.WriteLine("Malformed request when buffer copy");
                         ParseError(trash);
                         i = 0;
                     }
@@ -240,7 +241,7 @@ namespace QuikBridge
                             }
                             if (jdoc == null)
                             {
-                                Console.WriteLine("Malformed request");
+                                Console.WriteLine("Malformed request when jdoc not parsed");
                                 ParseError(pdoc);
                             }
                             else
