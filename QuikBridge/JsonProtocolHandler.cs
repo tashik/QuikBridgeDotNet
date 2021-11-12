@@ -177,8 +177,8 @@ namespace QuikBridge
         private void ProcessBuffer()
         {
             int i;
-            Console.WriteLine("INCOMMING BUFFER: ");
-            Console.WriteLine(Encoding.UTF8.GetString(_incommingBuf));
+            //Console.WriteLine("INCOMMING BUFFER: ");
+            //Console.WriteLine(Encoding.UTF8.GetString(_incommingBuf));
             for (i = 0; i < _filledSz; i++)
             {
                 if (_incommingBuf[i] == '{')
@@ -225,10 +225,19 @@ namespace QuikBridge
                         {
                             byte[] pdoc = new byte[i + 1];
                             Buffer.BlockCopy(_incommingBuf, 0, pdoc, 0, i + 1);
+                            Console.WriteLine("PARSED DOC: ");
+                            Console.WriteLine(Encoding.UTF8.GetString(pdoc));
                             if (_filledSz - i - 1 > 0)
+                            {
                                 Buffer.BlockCopy(_incommingBuf, i, _incommingBuf, 0, _filledSz - i - 1);
+                                Console.WriteLine("INCOMMING BUFFER AFTER PDOC CUT: ");
+                                Console.WriteLine(Encoding.UTF8.GetString(_incommingBuf));
+                            }
+                                
                             _filledSz -= i + 1;
                             i = -1;
+                            inString = false;
+                            inEsc = false;
                             braceNestingLevel = 0;
                             JsonDocument jdoc = null;
                             try
@@ -293,6 +302,7 @@ namespace QuikBridge
                                     }
                                 }
                             }
+                            continue;
                         }
                     }
                 }
@@ -381,8 +391,19 @@ namespace QuikBridge
                 type = type,
                 body = data
             };
-            if (type == MsgTypeReq && ReqArrived != null) ReqArrived(jReq);
-            else if (type == MsgTypeResp && RespArrived != null) RespArrived(jReq);
+            switch (type)
+            {
+                case MsgTypeReq:
+                    ReqArrived?.Invoke(jReq);
+                    break;
+                case MsgTypeResp:
+                    RespArrived?.Invoke(jReq);
+                    _responseReceived.Set();
+                    break;
+                default:
+                    Console.WriteLine("Unsupported message type");
+                    break;
+            }
         }
 
         private void EndArrived()

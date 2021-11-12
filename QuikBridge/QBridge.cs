@@ -159,6 +159,7 @@ namespace QuikBridge
 
         private void OnResp(JsonMessage msg)
         {
+            Console.WriteLine("resp arrived with message id {0}");
             if (!_messageRegistry.ContainsKey(msg.id)) return;
 
             var newMessage = _messageRegistry[msg.id];
