@@ -67,7 +67,7 @@ namespace QuikBridge
             
             _msgIndexer = new MessageIndexer();
             
-            _orderBookTimer = new Timer(Timer_Tick, new AutoResetEvent(false), 0, 5000);
+            _orderBookTimer = new Timer(Timer_Tick, new AutoResetEvent(false), 0, 2000);
         }
 
         public bool IsConnected()
@@ -112,7 +112,7 @@ namespace QuikBridge
             
             Subscriptions.Add(newSubscription);
             RegisterRequest(req.id, req.data.function, newSubscription);
-            
+            Console.WriteLine("subscription request is sent with message id {0} for ticker {1}", msgId, ticker);
             _pHandler.SendReq(req);
         }
 
@@ -148,6 +148,7 @@ namespace QuikBridge
                 }
             };
             RegisterRequest(req.id, req.data.function, subscription);
+            Console.WriteLine("subscription cancellation is sent with message id {0} for ticker {1}", req.id, ticker);
             _pHandler.SendReq(req);
             Subscriptions.Remove(subscription);
         }
@@ -159,7 +160,7 @@ namespace QuikBridge
 
         private void OnResp(JsonMessage msg)
         {
-            Console.WriteLine("resp arrived with message id {0}");
+            Console.WriteLine("resp arrived with message id {0}", msg.id);
             if (!_messageRegistry.ContainsKey(msg.id)) return;
 
             var newMessage = _messageRegistry[msg.id];
@@ -176,13 +177,11 @@ namespace QuikBridge
                         {
                             string jsonStr = res.GetRawText();
                             var snapshot = JsonConvert.DeserializeObject<OrderBook>(jsonStr);
-                            double bidsCount = 0;
-                            double offersCount = 0;
 
                             if (snapshot != null && snapshot.bid_count != "" && snapshot.offer_count != "")
                             {
-                                bool isBidParsed = double.TryParse(snapshot.bid_count, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out bidsCount);
-                                bool isOfferParsed = double.TryParse(snapshot.offer_count, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out offersCount);
+                                double.TryParse(snapshot.bid_count, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var bidsCount);
+                                double.TryParse(snapshot.offer_count, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var offersCount);
                                 if (bidsCount > 0 && offersCount > 0)
                                     OrderBookUpdate?.Invoke(newMessage.Ticker, newMessage.MessageType, snapshot);
                             }
@@ -231,8 +230,9 @@ namespace QuikBridge
                             }
                         };
                         RegisterRequest(req.id, req.data.function, entry);
+                        Console.WriteLine("getQuote request is sent with message id {0} for ticker {1}", req.id, entry.Ticker);
                         _pHandler.SendReq(req);
-                        return;
+                        break;
                     }
                     default:
                         return;
